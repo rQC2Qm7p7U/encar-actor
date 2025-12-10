@@ -7,7 +7,8 @@
     "vehicleId": {
       "title": "Vehicle ID",
       "type": "string",
-      "description": "Single Encar vehicleId to parse (e.g., 40849700). Leave empty if using vehicleIds instead."
+      "description": "Single Encar vehicleId to parse (e.g., 40849700). Leave empty if using vehicleIds instead.",
+      "editor": "textinput"
     },
     "vehicleIds": {
       "title": "Vehicle IDs",
@@ -16,13 +17,15 @@
       "items": {
         "type": "string"
       },
-      "uniqueItems": false
+      "uniqueItems": false,
+      "editor": "json"
     },
     "htmlPath": {
       "title": "Local HTML path",
       "type": "string",
       "description": "Optional path to a saved Encar detail page for offline parsing.",
-      "prefill": "sample.html"
+      "prefill": "sample.html",
+      "editor": "textinput"
     }
   },
   "required": []
