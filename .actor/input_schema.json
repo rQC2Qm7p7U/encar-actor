@@ -7,7 +7,7 @@
     "vehicleId": {
       "title": "Vehicle ID",
       "type": "string",
-      "description": "Single Encar vehicleId to parse (e.g., 40849700)."
+      "description": "Single Encar vehicleId to parse (e.g., 40849700). Leave empty if using vehicleIds instead."
     },
     "vehicleIds": {
       "title": "Vehicle IDs",
@@ -25,17 +25,5 @@
       "prefill": "sample.html"
     }
   },
-  "required": [],
-  "anyOf": [
-    {
-      "required": [
-        "vehicleId"
-      ]
-    },
-    {
-      "required": [
-        "vehicleIds"
-      ]
-    }
-  ]
+  "required": []
 }
