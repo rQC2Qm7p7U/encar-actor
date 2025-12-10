@@ -1,9 +1,11 @@
 {
-	"actorSpecification": 1,
-	"environmentVariables": {
-		"PYTHONUNBUFFERED": "1"
-	},
-	"name": "encar-vehicle-parser",
-	"version": "0.1",
-	"buildTag": "latest"
+  "actorSpecification": 1,
+  "title": "Encar Vehicle Parser",
+  "description": "Extract detailed vehicle data from Encar.com by listing ID and get clean JSON with id, vin, make, model, trim, year, price, mileage, fuel, URLs, specifications (engine, transmission, body_type, color, seats), timestamps, metrics and condition fields.",
+  "environmentVariables": {
+    "PYTHONUNBUFFERED": "1"
+  },
+  "name": "encar-vehicle-parser",
+  "version": "0.1.0",
+  "buildTag": "latest"
 }

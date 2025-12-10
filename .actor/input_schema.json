@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "title": "Encar Vehicle Parser - Input",
+  "description": "Parse Encar vehicle detail pages by vehicleId or a list of vehicleIds. Optionally use a saved HTML file for offline runs.",
+  "type": "object",
+  "properties": {
+    "vehicleId": {
+      "title": "Vehicle ID",
+      "type": "string",
+      "description": "Single Encar vehicleId to parse (e.g., 40849700)."
+    },
+    "vehicleIds": {
+      "title": "Vehicle IDs",
+      "type": "array",
+      "description": "List of Encar vehicleIds to parse.",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": false
+    },
+    "htmlPath": {
+      "title": "Local HTML path",
+      "type": "string",
+      "description": "Optional path to a saved Encar detail page for offline parsing.",
+      "prefill": "sample.html"
+    }
+  },
+  "required": [],
+  "anyOf": [
+    {
+      "required": [
+        "vehicleId"
+      ]
+    },
+    {
+      "required": [
+        "vehicleIds"
+      ]
+    }
+  ]
+}

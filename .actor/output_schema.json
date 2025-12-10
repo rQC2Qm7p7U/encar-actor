@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "title": "Encar Vehicle Parser - Output Item",
+  "description": "Normalized vehicle record emitted to the default dataset.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "description": "Parsed vehicle details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Vehicle identifier (stringified vehicleId)."
+        },
+        "vin": {
+          "type": "string",
+          "description": "Vehicle VIN."
+        },
+        "make": {
+          "type": "string",
+          "description": "Manufacturer name (English if available)."
+        },
+        "model": {
+          "type": "string",
+          "description": "Model or model group."
+        },
+        "trim": {
+          "type": "string",
+          "description": "Trim/grade."
+        },
+        "year": {
+          "type": "integer",
+          "description": "Model year."
+        },
+        "price": {
+          "type": "integer",
+          "description": "Price in KRW."
+        },
+        "mileage": {
+          "type": "integer",
+          "description": "Mileage in km."
+        },
+        "fuel": {
+          "type": "string",
+          "description": "Fuel type."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Vehicle detail page URL."
+        },
+        "card_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Alias to the vehicle detail page URL."
+        },
+        "specifications": {
+          "type": "object",
+          "description": "Technical specs when available.",
+          "properties": {
+            "engine": {
+              "type": "string"
+            },
+            "transmission": {
+              "type": "string"
+            },
+            "fuel_type": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            },
+            "body_type": {
+              "type": "string"
+            },
+            "seats": {
+              "type": "integer"
+            }
+          }
+        },
+        "timestamps": {
+          "type": "object",
+          "description": "Key lifecycle dates (YYYY-MM-DD).",
+          "properties": {
+            "registered_at": {
+              "type": "string"
+            },
+            "first_advertised_at": {
+              "type": "string"
+            },
+            "modified_at": {
+              "type": "string"
+            }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "description": "Engagement and ad metadata.",
+          "properties": {
+            "view_count": {
+              "type": "integer"
+            },
+            "favorite_count": {
+              "type": "integer"
+            },
+            "ad_type": {
+              "type": "string"
+            },
+            "ad_status": {
+              "type": "string"
+            },
+            "diagnosis_car": {
+              "type": "boolean"
+            }
+          }
+        },
+        "condition": {
+          "type": "object",
+          "description": "Condition flags when present.",
+          "properties": {
+            "accident_record_view": {
+              "type": "boolean"
+            },
+            "inspection_formats": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "seizing_count": {
+              "type": "integer"
+            },
+            "pledge_count": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "url"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ]
+}
