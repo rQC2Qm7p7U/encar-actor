@@ -26,4 +26,5 @@ jobs:
       - name: Push actor to Apify
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-        run: apify push
+          APIFY_ACTOR_ID: ${{ secrets.APIFY_ACTOR_ID }}
+        run: apify push --actor-id "$APIFY_ACTOR_ID"
