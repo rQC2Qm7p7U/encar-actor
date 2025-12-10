@@ -1,45 +1,34 @@
-# Encar Vehicle Parser (Apify Actor)
+# Encar Vehicle Parser
 
-Parses Encar vehicle detail pages (e.g., `https://fem.encar.com/cars/detail/{vehicleId}`) and outputs structured JSON with key fields: id, VIN, make/model/trim, price, mileage, specifications, timestamps, metrics, and condition flags.
+Parse Encar vehicle detail pages (`https://fem.encar.com/cars/detail/{vehicleId}`) and return normalized JSON. Works as both a local CLI tool and an Apify actor.
 
-## Features
+## What It Does
+- Fetches the detail page and extracts the `__PRELOADED_STATE__` JSON (no browser needed).
+- Validates the critical `cars.base.*` shape with Pydantic to surface breaking site changes early.
+- Normalizes key fields: id, VIN, make/model/trim, year, price (만원 → KRW), mileage, specs (engine, transmission, fuel, color, body, seats), timestamps (dates only), metrics (views/favorites/ad flags), and condition flags.
+- Supports one or many `vehicleId` inputs; outputs an object for one or a list for many.
 
-- Single or multiple `vehicleId` inputs.
-- Uses preloaded `__PRELOADED_STATE__` JSON (no dynamic rendering needed).
-- Converts price from 만원 to KRW.
-- English-friendly specs (engine, transmission, fuel, color, body type, seats).
-- Includes VIN, trim, fuel (top-level), timestamps (date-only), metrics (views/favorites/ad flags), and condition info.
-- Reuses HTTP session and retry strategy for robustness.
-- Works as an Apify actor and as a local CLI tool (fallback mode).
-- Валидация структуры `cars.base.*` через Pydantic: при изменениях HTML/state выдаёт понятные ошибки вместо тихих падений.
-
-## Input
-
-JSON via Apify input or stdin (local):
-
-```json
-{
-  "vehicleId": "40849700"
-}
+## Quickstart (Local)
+1) Install deps (virtualenv recommended):
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+```
+2) Parse live (requires network):
+```bash
+echo '{"vehicleId": "40849700"}' | python main.py
+```
+3) Parse offline with a saved page:
+```bash
+echo '{"vehicleId": "40849700"}' | python main.py --html sample.html
+```
+4) Multiple IDs:
+```bash
+echo '{"vehicleIds": ["40849700", "12345678"]}' | python main.py
 ```
 
-or
-
-```json
-{
-  "vehicleIds": ["40849700", "12345678"]
-}
-```
-
-Optional (local/offline):
-
-- `htmlPath`: path to a downloaded Encar detail page.
-- CLI flag `--html path/to/file` (local fallback).
-
-## Output
-
-For each vehicle:
-
+## Sample Output
 ```json
 {
   "data": {
@@ -84,96 +73,46 @@ For each vehicle:
 }
 ```
 
-- Single input returns an object; multiple inputs return an array.
-- In Apify, results are also pushed to the default dataset and stored as `OUTPUT`.
+## Validation & Error Messages
+Key fields under `cars.base.*` are validated. Typical errors:
+- `EncarParseError: State missing cars object.` — `__PRELOADED_STATE__` is missing `cars`.
+- `EncarParseError: State missing cars.base object.` — `cars.base` not found.
+- `EncarParseError: cars.base validation failed: Field required @ category` — expected `category` block is absent.
+- `EncarParseError: cars.base validation failed: Input should be a valid integer @ spec/displacement` — type changed on the site.
+- `EncarParseError: Preloaded state marker not found.` — page missing `__PRELOADED_STATE__` (different variant or blocked response).
+
+## Troubleshooting
+1) Run tests against the fixture:
+```bash
+python -m unittest discover -s tests -p 'test_*.py'
+```
+2) Reproduce offline with a saved page:
+```bash
+echo '{"vehicleId": "40849700"}' | python main.py --html sample.html
+```
+3) With a fresh HTML:
+```bash
+echo '{"vehicleId": "NEW_ID"}' | python main.py --html path/to/new.html
+```
+4) If parsing fails:
+- Grab a fresh page, rerun with `--html` to rule out network.
+- Inspect `__PRELOADED_STATE__` and align Pydantic models in `parser.py` (`BaseCarModel` and nested models).
+- Update normalization in `build_output` if fields moved or renamed.
 
 ## Project Layout
-
-- `parser.py`: core parser logic (HTML fetch, preloaded state extraction, normalization).
-- Важно: `parser.py` валидирует `cars.base.*` (Pydantic) и бросает `EncarParseError` с деталями, если Encar меняет структуру.
-- `main.py`: Apify actor entrypoint + local fallback.
-- `requirements.txt`: dependencies (`requests`, `Unidecode`, `apify`, `pydantic`).
-- `Dockerfile`: build for Apify platform.
-- `apify.json`: actor metadata.
-- `sample.html`: fixture for offline testing.
-
-## Running Locally
-
-1. Install deps (venv recommended):
-
-```bash
-python -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-```
-
-2. Parse live (network required):
-
-```bash
-echo '{"vehicleId": "40849700"}' | .venv/bin/python main.py
-```
-
-3. Parse offline:
-
-```bash
-echo '{"vehicleId": "40849700"}' | .venv/bin/python main.py --html sample.html
-```
-
-4. Multiple IDs:
-
-```bash
-echo '{"vehicleIds": ["40849700", "12345678"]}' | .venv/bin/python main.py
-```
+- `parser.py` — fetch, state extraction, Pydantic validation, normalization.
+- `main.py` — Apify actor entrypoint + local CLI fallback.
+- `tests/test_parser.py` — fixture-based unit tests and negative cases.
+- `requirements.txt` — deps: `requests`, `Unidecode`, `apify`, `pydantic`.
+- `Dockerfile` — container build for Apify.
+- `sample.html` — saved page for offline runs/tests.
 
 ## Apify Usage
+- Deploy as an Apify actor; provide `vehicleId` or `vehicleIds` in `INPUT.json`.
+- Actor pushes results to the default dataset and stores `OUTPUT`.
+- GitHub Actions (`.github/workflows/apify-deploy.yml`) can push on `main/master` when secrets (`APIFY_TOKEN`, `APIFY_ACTOR_ID`) are set.
 
-- Deploy this repository as an Apify actor.
-- Input `INPUT.json` with `vehicleId` or `vehicleIds`.
-- Actor handles networking, pushes results to the default dataset, and saves `OUTPUT`.
-- CI/CD: GitHub Actions workflow `.github/workflows/apify-deploy.yml` runs `apify push` on pushes to `main/master`. Add `APIFY_TOKEN` to repo secrets; never commit tokens or .env files (they’re gitignored).
-- При ошибках парсинга/валидации получите `EncarParseError` с указанием поля; используйте `sample.html` и тесты для диагностики.
-
-## Диагностика и типовые ошибки
-
-### Примеры сообщений валидации
-
-- `EncarParseError: State missing cars object.` — в `__PRELOADED_STATE__` нет блока `cars`; проверьте, не изменилась ли структура страницы.
-- `EncarParseError: State missing cars.base object.` — отсутствует ключевой объект `base`; возможно, Encar сменил вложенность.
-- `EncarParseError: cars.base validation failed: Field required @ category` — `cars.base.category` отсутствует или имеет неверный тип.
-- `EncarParseError: cars.base validation failed: Input should be a valid integer @ spec/displacement` — тип поля изменился (например, строка вместо числа).
-- `EncarParseError: Preloaded state marker not found.` — в HTML нет `__PRELOADED_STATE__`; страница может быть иной версии или доступ заблокирован.
-
-### Локальная проверка и воспроизведение
-
-1. Запустить тесты на фикстуре:
-
-```bash
-python3 -m unittest discover -s tests -p 'test_*.py'
-```
-
-2. Прогнать парсер на `sample.html`:
-
-```bash
-echo '{"vehicleId": "40849700"}' | python3 main.py --html sample.html
-```
-
-3. Если есть новый HTML:
-
-```bash
-echo '{"vehicleId": "NEW_ID"}' | python3 main.py --html path/to/new.html
-```
-
-4. Для сетевых запросов убедитесь, что установлены зависимости (`pip install -r requirements.txt`) и есть доступ к `https://fem.encar.com`.
-
-### Что делать при ошибках
-
-- Снимите свежую страницу в файл и запустите парсер с `--html`, чтобы исключить сетевые проблемы.
-- Сравните структуру `__PRELOADED_STATE__` с ожиданиями (см. `tests/test_parser.py` и модели в `parser.py`).
-- При изменениях структуры обновите Pydantic-модели (`BaseCarModel` и вложенные) и логику нормализации в `build_output`.
-
-## Notes and Limits
-
-- Relies on the embedded `__PRELOADED_STATE__`; if Encar changes page structure, update the extractor.
-- Price is normalized to KRW (만원 \* 10,000).
-- Color translations use a simple dictionary; extend `COLOR_MAP` as needed.
-- Network errors are retried (3 attempts) with a backoff of 0.3s on common HTTP status codes.
+## Notes
+- Prices are converted from 만원 to KRW.
+- Colors are best-effort translated; extend `COLOR_MAP` in `parser.py` if needed.
+- HTTP requests use a shared session with retries (3 attempts, backoff 0.3s on common 5xx/429).***
