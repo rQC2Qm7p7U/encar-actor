@@ -34,4 +34,4 @@ jobs:
             "name": "encar-vehicle-parser"
           }
           EOF
-          apify push
+          APIFY_TOKEN=${APIFY_TOKEN} apify push
