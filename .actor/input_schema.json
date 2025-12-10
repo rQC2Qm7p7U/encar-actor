@@ -8,7 +8,7 @@
       "title": "Vehicle ID",
       "type": "string",
       "description": "Single Encar vehicleId to parse (e.g., 40849700). Leave empty if using vehicleIds instead.",
-      "editor": "textinput"
+      "editor": "textfield"
     },
     "vehicleIds": {
       "title": "Vehicle IDs",
@@ -25,7 +25,7 @@
       "type": "string",
       "description": "Optional path to a saved Encar detail page for offline parsing.",
       "prefill": "sample.html",
-      "editor": "textinput"
+      "editor": "textfield"
     }
   },
   "required": []
