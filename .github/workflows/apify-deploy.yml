@@ -28,7 +28,7 @@ jobs:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           APIFY_ACTOR_ID: ${{ secrets.APIFY_ACTOR_ID }}
         run: |
-          cat > apify.json << 'EOF'
+          cat > apify.json <<EOF
           {
             "actorId": "${APIFY_ACTOR_ID}",
             "name": "encar-vehicle-parser"
