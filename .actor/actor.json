@@ -1,0 +1,9 @@
+{
+	"actorSpecification": 1,
+	"environmentVariables": {
+		"PYTHONUNBUFFERED": "1"
+	},
+	"name": "encar-vehicle-parser",
+	"version": "0.1",
+	"buildTag": "latest"
+}

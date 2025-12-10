@@ -1,0 +1,29 @@
+name: Deploy to Apify
+
+on:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: apify-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Apify CLI
+        run: npm install -g apify-cli
+
+      - name: Push actor to Apify
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: apify push

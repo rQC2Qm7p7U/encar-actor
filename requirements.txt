@@ -1,0 +1,3 @@
+requests>=2.31.0
+Unidecode>=1.3.7
+apify>=1.3.2
