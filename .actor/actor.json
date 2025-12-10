@@ -6,6 +6,6 @@
     "PYTHONUNBUFFERED": "1"
   },
   "name": "encar-vehicle-parser",
-  "version": "0.1.0",
+  "version": "0.1",
   "buildTag": "latest"
 }
