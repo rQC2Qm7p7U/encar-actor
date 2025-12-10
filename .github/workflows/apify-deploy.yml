@@ -2,7 +2,9 @@ name: Deploy to Apify
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
 
 concurrency:
   group: apify-deploy-${{ github.ref }}
@@ -13,30 +15,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install Apify CLI
-        run: |
-          curl -fsSL https://apify.com/install-cli.sh | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Push Actor to Apify
+        uses: apify/push-actor-action@master
+        with:
+          token: ${{ secrets.APIFY_TOKEN }}
+          actor-id: ${{ secrets.APIFY_ACTOR_ID }}
 
-      - name: Push actor to Apify
-        env:
-          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-          APIFY_ACTOR_ID: ${{ secrets.APIFY_ACTOR_ID }}
-        run: |
-          cat > apify.json <<EOF
-          {
-            "actorId": "${APIFY_ACTOR_ID}",
-            "name": "encar-vehicle-parser"
-          }
-          EOF
-
-          apify login -t "$APIFY_TOKEN" -m manual
-          apify push --force
+          working-directory: .
