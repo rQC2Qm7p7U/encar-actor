@@ -15,13 +15,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from unidecode import unidecode
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) "
@@ -40,6 +42,80 @@ RETRY_STRATEGY = Retry(
     allowed_methods=("GET",),
 )
 SESSION = None  # Lazy-initialized shared session for connection reuse.
+MAX_STATE_CHARS = 5_000_000  # Safety guard for unexpected script bloat.
+
+
+class CategoryModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    manufacturerEnglishName: Optional[str] = None
+    manufacturerName: Optional[str] = None
+    modelGroupEnglishName: Optional[str] = None
+    modelGroupName: Optional[str] = None
+    modelName: Optional[str] = None
+    gradeEnglishName: Optional[str] = None
+    gradeName: Optional[str] = None
+    yearMonth: Optional[str] = None
+    formYear: Optional[int] = None
+
+
+class AdvertisementModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    price: Optional[int] = None
+    advertisementType: Optional[str] = None
+    status: Optional[str] = None
+    diagnosisCar: Optional[bool] = None
+
+
+class SpecModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    displacement: Optional[int] = None
+    transmissionName: Optional[str] = None
+    fuelCd: Optional[str] = None
+    fuelName: Optional[str] = None
+    colorName: Optional[str] = None
+    seatCount: Optional[int] = None
+    bodyName: Optional[str] = None
+    mileage: Optional[int] = None
+
+
+class ManageModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    registDateTime: Optional[str] = None
+    firstAdvertisedDateTime: Optional[str] = None
+    modifyDateTime: Optional[str] = None
+    subscribeCount: Optional[int] = None
+    viewCount: Optional[int] = None
+
+
+class ConditionModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    accident: Optional[Dict[str, Any]] = None
+    inspection: Optional[Dict[str, Any]] = None
+    seizing: Optional[Dict[str, Any]] = None
+
+
+class DetailFlagsModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    adStatus: Optional[str] = None
+
+
+class BaseCarModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    vehicleId: Optional[int] = None
+    vin: Optional[str] = None
+    category: CategoryModel
+    advertisement: AdvertisementModel
+    spec: SpecModel
+    manage: ManageModel
+    condition: ConditionModel
+    detailFlags: Optional[DetailFlagsModel] = None
 
 
 class EncarParseError(Exception):
@@ -74,28 +150,64 @@ def fetch_vehicle_page(vehicle_id: str, session: Optional[requests.Session] = No
 def extract_preloaded_state(html: str) -> Dict[str, Any]:
     """Extract the __PRELOADED_STATE__ JSON blob embedded in the page."""
     marker = "__PRELOADED_STATE__"
-    start = html.find(marker)
-    if start == -1:
+
+    class _ScriptCollector(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.scripts: List[str] = []
+            self._in_script = False
+            self._buffer: List[str] = []
+
+        def handle_starttag(self, tag: str, attrs: List[tuple[str, Optional[str]]]) -> None:
+            if tag.lower() == "script":
+                self._in_script = True
+                self._buffer = []
+
+        def handle_endtag(self, tag: str) -> None:
+            if tag.lower() == "script" and self._in_script:
+                combined = "".join(self._buffer)
+                if marker in combined:
+                    self.scripts.append(combined)
+                self._in_script = False
+                self._buffer = []
+
+        def handle_data(self, data: str) -> None:
+            if self._in_script:
+                self._buffer.append(data)
+
+    parser = _ScriptCollector()
+    parser.feed(html)
+    candidates = parser.scripts
+    if not candidates:
         raise EncarParseError("Preloaded state marker not found.")
 
-    # Limit search to the current script tag for robustness.
-    sliced = html[start:]
-    end = sliced.find("</script>")
-    if end == -1:
-        raise EncarParseError("Closing script tag not found after preloaded state.")
+    def _extract_json(script_body: str) -> Dict[str, Any]:
+        _, _, tail = script_body.partition(marker)
+        _, _, after_equals = tail.partition("=")
+        json_start = after_equals.find("{")
+        if json_start == -1:
+            raise EncarParseError("Preloaded state JSON payload not found.")
+        json_blob = after_equals[json_start:]
+        # Trim trailing semicolon or extra script text.
+        json_blob = json_blob.split("</script>", 1)[0].strip()
+        if ";" in json_blob:
+            json_blob = json_blob.split(";", 1)[0].strip()
+        if len(json_blob) > MAX_STATE_CHARS:
+            raise EncarParseError("Preloaded state payload too large.")
+        try:
+            return json.loads(json_blob)
+        except json.JSONDecodeError as exc:
+            raise EncarParseError(f"Failed to decode preloaded state: {exc}") from exc
 
-    script_body = sliced[:end]
-    _, _, tail = script_body.partition(marker)
-    _, _, json_part = tail.partition("=")
-    json_part = json_part.strip()
-    if ";" in json_part:
-        json_part = json_part.split(";", 1)[0]
-    json_part = json_part.strip()
-
-    try:
-        return json.loads(json_part)
-    except json.JSONDecodeError as exc:
-        raise EncarParseError(f"Failed to decode preloaded state: {exc}") from exc
+    # Use first valid candidate; fail only after trying all.
+    last_error: Optional[Exception] = None
+    for script in candidates:
+        try:
+            return _extract_json(script)
+        except EncarParseError as exc:
+            last_error = exc
+            continue
+    raise EncarParseError(str(last_error) if last_error else "Failed to decode preloaded state.")
 
 
 def normalize_price(raw_price: Optional[int]) -> Optional[int]:
@@ -199,6 +311,26 @@ def format_date(date_str: Optional[str]) -> Optional[str]:
     return date_str.split("T", 1)[0]
 
 
+def validate_state(state: Dict[str, Any]) -> BaseCarModel:
+    """Validate and normalize the expected cars.base structure."""
+    cars = state.get("cars")
+    if not isinstance(cars, dict):
+        raise EncarParseError("State missing `cars` object.")
+    base = cars.get("base")
+    if not isinstance(base, dict):
+        raise EncarParseError("State missing `cars.base` object.")
+    try:
+        return BaseCarModel.model_validate(base)
+    except ValidationError as exc:
+        errors = exc.errors()
+        formatted = [
+            f"{err.get('msg')} @ {'/'.join(str(loc) for loc in err.get('loc', []))}"
+            for err in errors[:3]
+        ]
+        suffix = "; ".join(formatted)
+        raise EncarParseError(f"cars.base validation failed: {suffix}") from exc
+
+
 def build_output(vehicle_id: str, state: Dict[str, Any]) -> Dict[str, Any]:
     base = state.get("cars", {}).get("base", {})
     category = base.get("category", {})
@@ -278,6 +410,7 @@ def parse_vehicle(
         else fetch_vehicle_page(vehicle_id, session=session)
     )
     state = extract_preloaded_state(html)
+    validate_state(state)
     return {"data": build_output(vehicle_id, state)}
 
 
