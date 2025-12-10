@@ -23,7 +23,7 @@ jobs:
       - name: Install Apify CLI
         run: npm install -g apify-cli
 
-      -       - name: Push actor to Apify
+      - name: Push actor to Apify
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           APIFY_ACTOR_ID: ${{ secrets.APIFY_ACTOR_ID }}
@@ -35,4 +35,3 @@ jobs:
           }
           EOF
           apify push
-        working-directory: ./
