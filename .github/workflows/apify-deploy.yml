@@ -39,4 +39,4 @@ jobs:
           EOF
 
           apify login -t "$APIFY_TOKEN" -m manual
-          apify push
+          apify push --confirm
