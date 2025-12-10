@@ -11,6 +11,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,19 +22,21 @@ jobs:
           node-version: 20
 
       - name: Install Apify CLI
-        run: npm install -g apify-cli
+        run: |
+          curl -fsSL https://apify.com/install-cli.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Login & push actor to Apify
+      - name: Push actor to Apify
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           APIFY_ACTOR_ID: ${{ secrets.APIFY_ACTOR_ID }}
         run: |
-          # создаём apify.json, как и раньше
           cat > apify.json <<EOF
           {
             "actorId": "${APIFY_ACTOR_ID}",
             "name": "encar-vehicle-parser"
           }
           EOF
+
           apify login -t "$APIFY_TOKEN" -m manual
-          apify push --confirm
+          apify push
