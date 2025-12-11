@@ -26,6 +26,12 @@
       "description": "Optional path to a saved Encar detail page for offline parsing.",
       "prefill": "sample.html",
       "editor": "textfield"
+    },
+    "maxConcurrency": {
+      "title": "Max concurrency",
+      "type": "integer",
+      "description": "Parallel fetches to run (capped to 10 to avoid overloading Encar/Apify).",
+      "editor": "number"
     }
   },
   "required": []

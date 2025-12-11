@@ -6,7 +6,7 @@ Parse Encar vehicle detail pages (`https://fem.encar.com/cars/detail/{vehicleId}
 - Fetches the detail page and extracts the `__PRELOADED_STATE__` JSON (no browser needed).
 - Validates the critical `cars.base.*` shape with Pydantic to surface breaking site changes early.
 - Normalizes key fields: id, VIN, make/model/trim, year, price (만원 → KRW), mileage, specs (engine, transmission, fuel, color, body, seats), timestamps (dates only), metrics (views/favorites/ad flags), and condition flags.
-- Supports one or many `vehicleId` inputs; outputs an object for one or a list for many.
+- Supports one or many `vehicleId` inputs; handles bulk lists with bounded concurrency.
 
 ## Quickstart (Local)
 1) Install deps (virtualenv recommended):
@@ -23,9 +23,9 @@ echo '{"vehicleId": "40849700"}' | python main.py
 ```bash
 echo '{"vehicleId": "40849700"}' | python main.py --html sample.html
 ```
-4) Multiple IDs:
+4) Multiple IDs (with capped concurrency):
 ```bash
-echo '{"vehicleIds": ["40849700", "12345678"]}' | python main.py
+echo '{"vehicleIds": ["40849700", "12345678"], "maxConcurrency": 3}' | python main.py
 ```
 
 ## Sample Output
@@ -109,7 +109,8 @@ echo '{"vehicleId": "NEW_ID"}' | python main.py --html path/to/new.html
 
 ## Apify Usage
 - Deploy as an Apify actor; provide `vehicleId` or `vehicleIds` in `INPUT.json`.
-- Actor pushes results to the default dataset and stores `OUTPUT`.
+- Optional `maxConcurrency` keeps parallel HTTP fetches within 1–10 (default 3) to avoid overloading Encar or exhausting Apify resources.
+- Actor pushes results to the default dataset and stores `OUTPUT` with counts + items (single runs keep the legacy single-item shape).
 - GitHub Actions (`.github/workflows/apify-deploy.yml`) can push on `main/master` when secrets (`APIFY_TOKEN`, `APIFY_ACTOR_ID`) are set.
 
 ## Notes
